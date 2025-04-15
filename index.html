@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>My Toolbox - Productivity Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    <div id="login-page" class="flex items-center justify-center min-h-screen">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Login to My Toolbox</h2>
+            <!-- Login Form -->
+            <div id="auth-form" class="space-y-4">
+                <input id="email" type="email" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Email" required>
+                <input id="password" type="password" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Password" required>
+                <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 w-full disabled:bg-blue-300" id="login-btn">Login</button>
+                <button onclick="requestOtp()" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 w-full disabled:bg-green-300" id="signup-btn">Sign Up</button>
+                <p class="text-center">
+                    <a href="#" onclick="showForgotPassword()" class="text-blue-500 hover:underline">Forgot Password?</a>
+                </p>
+                <p id="auth-error" class="text-red-500 text-center hidden">Invalid credentials</p>
+                <p id="auth-loading" class="text-gray-500 text-center hidden">Loading...</p>
+            </div>
+            <!-- OTP Form (for signup only) -->
+            <div id="otp-form" class="space-y-4 hidden">
+                <input id="otp-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Enter OTP">
+                <button onclick="verifyOtp()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 w-full disabled:bg-blue-300" id="verify-otp-btn">Verify OTP</button>
+                <button onclick="requestOtp()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 w-full disabled:bg-gray-300" id="resend-otp-btn">Resend OTP</button>
+                <button onclick="backToLogin()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 w-full">Back to Login</button>
+                <p id="otp-error" class="text-red-500 text-center hidden">Invalid OTP</p>
+            </div>
+            <!-- Forgot Password Form -->
+            <div id="forgot-password-form" class="space-y-4 hidden">
+                <input id="reset-email" type="email" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Enter your email" required>
+                <button onclick="forgotPassword()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 w-full disabled:bg-blue-300" id="reset-btn">Send Reset Code</button>
+                <button onclick="backToLogin()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 w-full">Back to Login</button>
+                <p id="reset-message" class="text-green-500 text-center hidden">Reset code sent! Check your email.</p>
+                <p id="reset-error" class="text-red-500 text-center hidden">Failed to send reset code.</p>
+            </div>
+            <!-- Reset Password Form -->
+            <div id="reset-password-form" class="space-y-4 hidden">
+                <input id="reset-token" type="text" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Enter reset code" required>
+                <input id="new-password" type="password" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="New Password" required>
+                <input id="confirm-password" type="password" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Confirm Password" required>
+                <button onclick="resetPassword()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 w-full disabled:bg-blue-300" id="update-password-btn">Update Password</button>
+                <button onclick="backToLogin()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 w-full">Back to Login</button>
+                <p id="update-error" class="text-red-500 text-center hidden">Failed to update password.</p>
+                <p id="update-message" class="text-green-500 text-center hidden">Password updated successfully!</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden">
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">My Toolbox</h1>
+                    <p class="text-gray-600">Your personal productivity dashboard</p>
+                </div>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">Logout</button>
+            </div>
+        </header>
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Quick Notes -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-sticky-note mr-2 text-yellow-500"></i>Quick Notes
+                    </h2>
+                    <div class="relative mb-4">
+                        <textarea id="note-input" class="w-full p-2 border rounded-md resize-none focus:ring-2 focus:ring-blue-500" rows="3" maxlength="500" placeholder="Jot down an idea..."></textarea>
+                        <span id="note-char-count" class="absolute bottom-2 right-2 text-gray-500 text-sm">0/500</span>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                        <button onclick="addNote()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:bg-blue-300" id="add-note-btn">Add Note</button>
+                        <button onclick="clearAllNotes()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 disabled:bg-red-300">Clear All</button>
+                    </div>
+                    <input id="note-search" type="text" class="w-full p-2 border rounded-md mb-4 focus:ring-2 focus:ring-blue-500" placeholder="Search notes...">
+                    <ul id="notes-list" class="mt-4 space-y-2 max-h-64 overflow-y-auto"></ul>
+                </div>
+                <!-- Task Tracker -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-tasks mr-2 text-green-500"></i>Task Tracker
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                        <input id="task-input" type="text" class="p-2 border rounded-md focus:ring-2 focus:ring-green-500" placeholder="Add a task..." required>
+                        <select id="task-category" class="p-2 border rounded-md focus:ring-2 focus:ring-green-500">
+                            <option value="General">General</option>
+                            <option value="Work">Work</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                        <input id="task-due-date" type="date" class="p-2 border rounded-md focus:ring-2 focus:ring-green-500">
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                        <button onclick="addTask()" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 disabled:bg-green-300" id="add-task-btn">Add Task</button>
+                        <button onclick="clearCompletedTasks()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 disabled:bg-red-300">Clear Completed</button>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                        <button onclick="sortTasks('status')" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Sort by Status</button>
+                        <button onclick="sortTasks('dueDate')" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Sort by Due Date</button>
+                    </div>
+                    <ul id="tasks-list" class="space-y-2 max-h-64 overflow-y-auto"></ul>
+                </div>
+                <!-- Expense Tracker -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-wallet mr-2 text-red-500"></i>Expense Tracker
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
+                        <input id="expense-name" type="text" class="p-2 border rounded-md focus:ring-2 focus:ring-red-500" placeholder="Expense name" required>
+                        <select id="expense-category" class="p-2 border rounded-md focus:ring-2 focus:ring-red-500">
+                            <option value="Food">Food</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Bills">Bills</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <input id="expense-amount" type="number" min="0.01" step="0.01" class="p-2 border rounded-md focus:ring-2 focus:ring-red-500" placeholder="Amount" required>
+                        <input id="expense-date" type="date" class="p-2 border rounded-md focus:ring-2 focus:ring-red-500" value="" required>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                        <button onclick="addExpense()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 disabled:bg-red-300" id="add-expense-btn">Add Expense</button>
+                        <button onclick="exportExpenses()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Export as CSV</button>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                        <select id="expense-filter" class="p-2 border rounded-md focus:ring-2 focus:ring-red-500">
+                            <option value="">All Categories</option>
+                            <option value="Food">Food</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Bills">Bills</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Monthly Summary</h3>
+                        <ul id="expense-summary" class="text-gray-600"></ul>
+                    </div>
+                    <ul id="expenses-list" class="mt-4 space-y-2 max-h-64 overflow-y-auto"></ul>
+                    <p class="mt-4 text-gray-800 font-semibold">Total: $<span id="expense-total">0.00</span></p>
+                </div>
+                <!-- Quote of the Day -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-quote-left mr-2 text-blue-500"></i>Quote of the Day
+                    </h2>
+                    <blockquote id="quote-text" class="text-gray-600 italic"></blockquote>
+                    <p id="quote-author" class="text-gray-800 mt-2 font-semibold"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="admin-dashboard" class="hidden">
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+                    <p class="text-gray-600">Manage registered users</p>
+                </div>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">Logout</button>
+            </div>
+        </header>
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4"><i class="fas fa-users mr-2 text-blue-500"></i>Registered Users</h2>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="p-2 border-b">Email</th>
+                            <th class="p-2 border-b">Created At</th>
+                            <th class="p-2 border-b">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body">
+                        <!-- User rows go here -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
