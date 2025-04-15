@@ -1,7 +1,3 @@
-const ADMIN_EMAIL = "admin@example.com";
-const ADMIN_PASSWORD = "admin123";
-
-// Initialize Supabase client
 const supabase = window.supabase.createClient(
     'https://uzocpbaimgaakvnhwktp.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2NwYmFpbWdhYWt2bmh3a3RwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDAyMzI3NCwiZXhwIjoyMDU5NTk5Mjc0fQ.mgvYnhGq9VHRp4y8g0wQ3bw28opYjIoD0v6gHB8WriU'
@@ -24,19 +20,6 @@ async function login() {
     authLoading.classList.remove('hidden');
     loginBtn.disabled = true;
 
-    // Admin login check
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        sessionStorage.setItem('adminLoggedIn', 'true');
-        document.getElementById('login-page').classList.add('hidden');
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('admin-dashboard').classList.remove('hidden');
-        loadAllUsers();
-        authLoading.classList.add('hidden');
-        loginBtn.disabled = false;
-        return;
-    }
-
-    // Regular user login
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     authLoading.classList.add('hidden');
     loginBtn.disabled = false;
@@ -47,7 +30,6 @@ async function login() {
         authError.classList.add('hidden');
         document.getElementById('login-page').classList.add('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
-        document.getElementById('admin-dashboard').classList.add('hidden');
         loadUserData();
     }
 }
@@ -72,11 +54,9 @@ async function requestOtp() {
     if (resendBtn) resendBtn.disabled = true;
 
     try {
-        // Store email and password temporarily
         sessionStorage.setItem('signupEmail', email);
         sessionStorage.setItem('signupPassword', password);
 
-        // Send OTP
         const { error } = await supabase.auth.signInWithOtp({
             email,
             options: {
@@ -90,7 +70,6 @@ async function requestOtp() {
         authError.classList.add('text-green-500');
         authError.classList.remove('hidden');
 
-        // Show OTP form and auto-focus input
         document.getElementById('auth-form').classList.add('hidden');
         document.getElementById('otp-form').classList.remove('hidden');
         document.getElementById('otp-input').focus();
@@ -106,7 +85,7 @@ async function requestOtp() {
         signupBtn.disabled = false;
         if (resendBtn) {
             resendBtn.disabled = true;
-            setTimeout(() => resendBtn.disabled = false, 30000); // 30-second cooldown
+            setTimeout(() => resendBtn.disabled = false, 30000);
         }
     }
 }
@@ -127,7 +106,6 @@ async function verifyOtp() {
     verifyBtn.disabled = true;
 
     try {
-        // Verify OTP for signup
         const { data, error } = await supabase.auth.verifyOtp({
             email,
             token: otp,
@@ -135,7 +113,6 @@ async function verifyOtp() {
         });
         if (error) throw error;
 
-        // Set password and sign in
         const password = sessionStorage.getItem('signupPassword');
         const { error: updateError } = await supabase.auth.updateUser({
             password: password
@@ -147,14 +124,11 @@ async function verifyOtp() {
         otpError.classList.add('text-green-500');
         otpError.classList.remove('hidden');
 
-        // Clear signup storage
         sessionStorage.removeItem('signupEmail');
         sessionStorage.removeItem('signupPassword');
 
-        // Show dashboard
         document.getElementById('login-page').classList.add('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
-        document.getElementById('admin-dashboard').classList.add('hidden');
         loadUserData();
     } catch (error) {
         console.error('OTP verification error:', error.message);
@@ -197,10 +171,8 @@ async function forgotPassword() {
     resetBtn.disabled = true;
 
     try {
-        // Store email for reset
         sessionStorage.setItem('resetEmail', email);
 
-        // Send password reset email
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.origin
         });
@@ -209,7 +181,6 @@ async function forgotPassword() {
         resetMessage.textContent = "Reset code sent! Check your email (including spam) and enter the code.";
         resetMessage.classList.remove('hidden');
 
-        // Show reset password form
         document.getElementById('forgot-password-form').classList.add('hidden');
         document.getElementById('reset-password-form').classList.remove('hidden');
         document.getElementById('reset-token').focus();
@@ -254,7 +225,6 @@ async function resetPassword() {
     updateBtn.disabled = true;
 
     try {
-        // Verify the reset token
         const { error: verifyError } = await supabase.auth.verifyOtp({
             email,
             token,
@@ -262,7 +232,6 @@ async function resetPassword() {
         });
         if (verifyError) throw verifyError;
 
-        // Update password
         const { error: updateError } = await supabase.auth.updateUser({
             password: newPassword
         });
@@ -271,7 +240,6 @@ async function resetPassword() {
         updateMessage.textContent = "Password updated successfully! Please log in.";
         updateMessage.classList.remove('hidden');
 
-        // Clear reset email
         sessionStorage.removeItem('resetEmail');
 
         setTimeout(() => {
@@ -311,7 +279,6 @@ function backToLogin() {
 
 async function logout() {
     await supabase.auth.signOut();
-    sessionStorage.removeItem('adminLoggedIn');
     sessionStorage.removeItem('signupEmail');
     sessionStorage.removeItem('signupPassword');
     sessionStorage.removeItem('resetEmail');
@@ -321,69 +288,20 @@ async function logout() {
     document.getElementById('forgot-password-form').classList.add('hidden');
     document.getElementById('reset-password-form').classList.add('hidden');
     document.getElementById('dashboard').classList.add('hidden');
-    document.getElementById('admin-dashboard').classList.add('hidden');
-}
-
-// Rest of your existing JavaScript (loadAllUsers, deleteUser, auth state change, notes, tasks, expenses, event listeners, quotes) remains unchanged
-async function loadAllUsers() {
-    const { data, error } = await supabase.auth.admin.listUsers();
-    const tbody = document.getElementById('user-table-body');
-    
-    if (error) {
-        console.error('Error loading users:', error.message);
-        return;
-    }
-
-    const users = data.users.filter(user => user.email !== ADMIN_EMAIL);
-    tbody.innerHTML = users.map(user => `
-        <tr class="hover:bg-gray-50">
-            <td class="p-3 border-b break-all">${user.email}</td>
-            <td class="p-3 border-b">${new Date(user.created_at).toLocaleString()}</td>
-            <td class="p-3 border-b">
-                <div class="flex space-x-2">
-                    <button onclick="deleteUser('${user.id}')" 
-                            class="text-red-500 hover:text-red-700" 
-                            title="Delete User">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-async function deleteUser(userId) {
-    if (confirm("Are you sure you want to delete this user? This cannot be undone.")) {
-        const { error } = await supabase.auth.admin.deleteUser(userId);
-        if (error) {
-            alert("Failed to delete user: " + error.message);
-        } else {
-            alert("User deleted successfully!");
-            loadAllUsers();
-        }
-    }
 }
 
 supabase.auth.onAuthStateChange((event, session) => {
     if (session) {
-        const email = session.user.email;
         document.getElementById('login-page').classList.add('hidden');
-
-        if (email === ADMIN_EMAIL && sessionStorage.getItem('adminLoggedIn') === 'true') {
-            document.getElementById('admin-dashboard').classList.remove('hidden');
-            document.getElementById('dashboard').classList.add('hidden');
-            loadAllUsers();
-        } else {
-            document.getElementById('dashboard').classList.remove('hidden');
-            document.getElementById('admin-dashboard').classList.add('hidden');
-            loadUserData();
-        }
+        document.getElementById('dashboard').classList.remove('hidden');
+        loadUserData();
     } else {
         document.getElementById('login-page').classList.remove('hidden');
         document.getElementById('auth-form').classList.remove('hidden');
         document.getElementById('otp-form').classList.add('hidden');
         document.getElementById('forgot-password-form').classList.add('hidden');
         document.getElementById('reset-password-form').classList.add('hidden');
+        document.getElementById('dashboard').classList.add('hidden');
     }
 });
 
@@ -404,7 +322,6 @@ async function loadUserData() {
     }
 }
 
-// Notes
 let notes = [];
 async function addNote() {
     const input = document.getElementById('note-input');
@@ -503,7 +420,6 @@ function renderNotes(searchTerm = '') {
     `).join('');
 }
 
-// Task Tracker
 let tasks = [];
 async function addTask() {
     const input = document.getElementById('task-input');
@@ -623,7 +539,6 @@ function renderTasks() {
     `}).join('');
 }
 
-// Expenses
 let expenses = [];
 async function addExpense() {
     const name = document.getElementById('expense-name').value.trim();
@@ -727,18 +642,9 @@ function renderExpenses(filterCategory = '') {
     totalSpan.textContent = total;
 }
 
-// Event Listeners
 window.onload = function () {
     displayQuote();
-    if (document.getElementById('admin-dashboard')) {
-        const adminLoggedIn = sessionStorage.getItem('adminLoggedIn');
-        if (adminLoggedIn === 'true') {
-            document.getElementById('admin-dashboard').classList.remove('hidden');
-            loadAllUsers();
-        }
-    }
 
-    // Note character counter
     const noteInput = document.getElementById('note-input');
     if (noteInput) {
         noteInput.addEventListener('input', () => {
@@ -747,7 +653,6 @@ window.onload = function () {
         });
     }
 
-    // Note search
     const noteSearch = document.getElementById('note-search');
     if (noteSearch) {
         noteSearch.addEventListener('input', () => {
@@ -755,7 +660,6 @@ window.onload = function () {
         });
     }
 
-    // Expense filter
     const expenseFilter = document.getElementById('expense-filter');
     if (expenseFilter) {
         expenseFilter.addEventListener('change', () => {
@@ -763,13 +667,11 @@ window.onload = function () {
         });
     }
 
-    // Set default expense date
     const expenseDate = document.getElementById('expense-date');
     if (expenseDate) {
         expenseDate.value = new Date().toISOString().split('T')[0];
     }
 
-    // OTP input validation
     const otpInput = document.getElementById('otp-input');
     if (otpInput) {
         otpInput.addEventListener('input', () => {
@@ -778,7 +680,6 @@ window.onload = function () {
     }
 };
 
-// Quote
 const quotes = [
     { text: "The best way to get started is to quit talking and begin doing.", author: "Walt Disney" },
     { text: "Don’t let yesterday take up too much of today.", author: "Will Rogers" },
