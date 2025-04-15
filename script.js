@@ -1,3 +1,6 @@
+const ADMIN_EMAIL = "admin@example.com";
+const ADMIN_PASSWORD = "admin123";
+
 // Initialize Supabase client
 const supabase = window.supabase.createClient(
     'https://uzocpbaimgaakvnhwktp.supabase.co',
